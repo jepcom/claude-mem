@@ -2,22 +2,11 @@
 #
 # Centralized Worker - SQLite storage
 # Multiple clients (laptops, Clawdbot) POST hooks to it via HTTP.
-#
-# Usage:
-#   docker-compose up -d
-#
-# Then configure clients (~/.claude-mem/settings.json):
-#   {
-#     "CLAUDE_MEM_WORKER_URL": "http://your-server:37777",
-#     "CLAUDE_MEM_API_KEY": "your-api-key"
-#   }
 
 services:
   worker:
     build: .
     restart: unless-stopped
-    expose:
-      - "37777"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.worker.rule=Host(`${SERVICE_FQDN_WORKER}`)"
@@ -32,16 +21,17 @@ services:
       - CLAUDE_MEM_API_KEY=${CLAUDE_MEM_API_KEY:-}
       - CLAUDE_MEM_LOG_LEVEL=${LOG_LEVEL:-INFO}
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:37777/api/health"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:37777/api/health"]
       interval: 30s
       timeout: 10s
       start_period: 60s
       retries: 3
+    networks:
+      - coolify
 
 volumes:
   claude-mem-data:
 
-# Example .env file:
-# CLAUDE_MEM_API_KEY=sk-your-secure-random-key
-# WORKER_PORT=37777
-# LOG_LEVEL=DEBUG
+networks:
+  coolify:
+    external: true
