@@ -16,10 +16,12 @@
 export type { StorageAdapter, Session, Observation, Summary, UserPrompt, PendingMessage, QueryOptions, ObservationQueryOptions } from './StorageAdapter.js';
 export { SQLiteStorageAdapter } from './SQLiteStorageAdapter.js';
 export { FileStorageAdapter } from './FileStorageAdapter.js';
+export { PostgresStorageAdapter } from './PostgresStorageAdapter.js';
 
 import type { StorageAdapter } from './StorageAdapter.js';
 import { SQLiteStorageAdapter } from './SQLiteStorageAdapter.js';
 import { FileStorageAdapter } from './FileStorageAdapter.js';
+import { PostgresStorageAdapter } from './PostgresStorageAdapter.js';
 import { SettingsDefaultsManager } from '../shared/SettingsDefaultsManager.js';
 import { USER_SETTINGS_PATH } from '../shared/paths.js';
 
@@ -48,12 +50,13 @@ export function createStorageAdapter(config: StorageConfig): StorageAdapter {
     
     case 'postgres':
     case 'postgresql':
-      // TODO: Community contribution welcome
-      throw new Error(
-        'PostgreSQL storage adapter not yet implemented.\n' +
-        'Implement StorageAdapter interface and submit a PR!\n' +
-        'See: src/storage/StorageAdapter.ts'
-      );
+      if (!config.options?.connectionString) {
+        throw new Error(
+          'PostgreSQL requires a connection string.\n' +
+          'Set CLAUDE_MEM_STORAGE_CONNECTION_STRING in ~/.claude-mem/settings.json'
+        );
+      }
+      return new PostgresStorageAdapter(config.options.connectionString);
     
     case 'mysql':
       // TODO: Community contribution welcome

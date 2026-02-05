@@ -49,8 +49,32 @@ docker-compose up -d
 |---------|--------|----------|
 | `sqlite` | ✅ Default | Local single-user |
 | `file` | ✅ Ready | Zero dependencies, git-trackable |
-| `postgres` | 🚧 TODO | Shared multi-user, production |
+| `postgres` | ✅ Ready | Shared multi-user, production |
 | `mysql` | 🚧 TODO | Shared multi-user |
+
+### PostgreSQL Setup
+
+1. **Install pg package** (if not already):
+   ```bash
+   npm install pg
+   # or: bun add pg
+   ```
+
+2. **Start a PostgreSQL server** (or use docker-compose):
+   ```bash
+   docker-compose up -d db
+   ```
+
+3. **Configure your client**:
+   ```json
+   // ~/.claude-mem/settings.json
+   {
+     "CLAUDE_MEM_STORAGE_ADAPTER": "postgres",
+     "CLAUDE_MEM_STORAGE_CONNECTION_STRING": "postgres://claude-mem:changeme@localhost:5432/claude_mem"
+   }
+   ```
+
+4. **Restart Claude Code** — it will now connect to the shared database.
 
 ## Implementing Your Own Adapter
 
