@@ -33,9 +33,9 @@ ENV CLAUDE_MEM_DATA_DIR=/data/.claude-mem
 ENV CLAUDE_MEM_WORKER_HOST=0.0.0.0
 ENV CLAUDE_MEM_WORKER_PORT=37777
 
-# Health check
+# Health check (use 127.0.0.1, not localhost - IPv6 issue in Alpine)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD wget -qO- http://localhost:37777/api/health || exit 1
+  CMD wget -qO- http://127.0.0.1:37777/api/health || exit 1
 
 # Copy entrypoint
 COPY docker-entrypoint.js .
