@@ -16,8 +16,8 @@ services:
   worker:
     build: .
     restart: unless-stopped
-    ports:
-      - "${WORKER_PORT:-37777}:37777"
+    expose:
+      - "37777"
     volumes:
       - claude-mem-data:/data/.claude-mem
     environment:
