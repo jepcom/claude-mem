@@ -37,5 +37,8 @@ ENV CLAUDE_MEM_WORKER_PORT=37777
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD wget -qO- http://localhost:37777/api/health || exit 1
 
-# Start worker
-CMD ["bun", "plugin/scripts/worker-service.cjs", "start", "--foreground"]
+# Copy entrypoint
+COPY docker-entrypoint.js .
+
+# Start worker in foreground
+CMD ["node", "docker-entrypoint.js"]
