@@ -15,7 +15,7 @@ services:
       - "traefik.http.services.worker.loadbalancer.server.port=37777"
     volumes:
       - claude-mem-data:/data/.claude-mem
-      - claude-auth:/root/.config/claude-code
+      - claude-auth:/root/.claude
     environment:
       - CLAUDE_MEM_WORKER_HOST=0.0.0.0
       - CLAUDE_MEM_WORKER_PORT=37777

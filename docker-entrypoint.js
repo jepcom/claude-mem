@@ -17,12 +17,13 @@ function ensureClaudeAuth() {
     return;
   }
   
-  const authDir = '/root/.config/claude-code';
-  const authPath = path.join(authDir, 'auth.json');
+  // Claude CLI uses ~/.claude/.credentials.json on Linux
+  const authDir = '/root/.claude';
+  const authPath = path.join(authDir, '.credentials.json');
   
   // Check if auth already exists (from volume)
   if (fs.existsSync(authPath)) {
-    console.log('[DOCKER] Claude auth.json already exists, skipping');
+    console.log('[DOCKER] Claude credentials already exist, skipping');
     return;
   }
   
