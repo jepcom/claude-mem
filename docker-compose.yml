@@ -18,6 +18,12 @@ services:
     restart: unless-stopped
     expose:
       - "37777"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.worker.rule=Host(`${SERVICE_FQDN_WORKER}`)"
+      - "traefik.http.routers.worker.entrypoints=websecure"
+      - "traefik.http.routers.worker.tls.certresolver=letsencrypt"
+      - "traefik.http.services.worker.loadbalancer.server.port=37777"
     volumes:
       - claude-mem-data:/data/.claude-mem
     environment:
