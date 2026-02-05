@@ -21,6 +21,7 @@ import { SessionCompletionHandler } from '../../session/SessionCompletionHandler
 import { PrivacyCheckValidator } from '../../validation/PrivacyCheckValidator.js';
 import { SettingsDefaultsManager } from '../../../../shared/SettingsDefaultsManager.js';
 import { USER_SETTINGS_PATH } from '../../../../shared/paths.js';
+import { requireApiKey } from '../middleware.js';
 
 export class SessionRoutes extends BaseRouteHandler {
   private completionHandler: SessionCompletionHandler;
@@ -220,17 +221,19 @@ export class SessionRoutes extends BaseRouteHandler {
 
   setupRoutes(app: express.Application): void {
     // Legacy session endpoints (use sessionDbId)
-    app.post('/sessions/:sessionDbId/init', this.handleSessionInit.bind(this));
-    app.post('/sessions/:sessionDbId/observations', this.handleObservations.bind(this));
-    app.post('/sessions/:sessionDbId/summarize', this.handleSummarize.bind(this));
-    app.get('/sessions/:sessionDbId/status', this.handleSessionStatus.bind(this));
-    app.delete('/sessions/:sessionDbId', this.handleSessionDelete.bind(this));
-    app.post('/sessions/:sessionDbId/complete', this.handleSessionComplete.bind(this));
+    // Protected by API key when configured (remote mode)
+    app.post('/sessions/:sessionDbId/init', requireApiKey, this.handleSessionInit.bind(this));
+    app.post('/sessions/:sessionDbId/observations', requireApiKey, this.handleObservations.bind(this));
+    app.post('/sessions/:sessionDbId/summarize', requireApiKey, this.handleSummarize.bind(this));
+    app.get('/sessions/:sessionDbId/status', requireApiKey, this.handleSessionStatus.bind(this));
+    app.delete('/sessions/:sessionDbId', requireApiKey, this.handleSessionDelete.bind(this));
+    app.post('/sessions/:sessionDbId/complete', requireApiKey, this.handleSessionComplete.bind(this));
 
     // New session endpoints (use contentSessionId)
-    app.post('/api/sessions/init', this.handleSessionInitByClaudeId.bind(this));
-    app.post('/api/sessions/observations', this.handleObservationsByClaudeId.bind(this));
-    app.post('/api/sessions/summarize', this.handleSummarizeByClaudeId.bind(this));
+    // Protected by API key when configured (remote mode)
+    app.post('/api/sessions/init', requireApiKey, this.handleSessionInitByClaudeId.bind(this));
+    app.post('/api/sessions/observations', requireApiKey, this.handleObservationsByClaudeId.bind(this));
+    app.post('/api/sessions/summarize', requireApiKey, this.handleSummarizeByClaudeId.bind(this));
   }
 
   /**

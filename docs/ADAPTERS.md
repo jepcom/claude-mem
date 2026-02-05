@@ -9,6 +9,47 @@ This enables:
 - **Cloud-native setups** (Supabase, PlanetScale, etc.)
 - **Custom backends** for specific needs
 
+## Remote Worker Mode
+
+Run a single claude-mem worker on a server and have multiple clients (laptops, Clawdbot) POST to it.
+
+### Why Remote Mode?
+
+- **Shared memory pool**: All devices see the same observations and context
+- **No DB drivers on clients**: Clients just POST HTTP requests
+- **Lower latency**: One HTTP call per event vs. many DB roundtrips
+
+### Server Setup
+
+```bash
+# ~/.claude-mem/settings.json on server
+{
+  "CLAUDE_MEM_WORKER_HOST": "0.0.0.0",
+  "CLAUDE_MEM_WORKER_PORT": "37777",
+  "CLAUDE_MEM_API_KEY": "sk-your-secure-random-key"
+}
+```
+
+Then start the worker: `claude-mem worker start`
+
+### Client Setup
+
+```bash
+# ~/.claude-mem/settings.json on laptop/client
+{
+  "CLAUDE_MEM_WORKER_URL": "https://mem.example.com:37777",
+  "CLAUDE_MEM_API_KEY": "sk-your-secure-random-key"
+}
+```
+
+Restart Claude Code — hooks will now POST to the remote server.
+
+### Security Notes
+
+- Use HTTPS (reverse proxy with nginx/caddy)
+- Use a strong API key (32+ random chars)
+- Consider firewall rules or VPN for extra security
+
 ## Quick Start
 
 ### Local (Default)

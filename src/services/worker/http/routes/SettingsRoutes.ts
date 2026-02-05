@@ -89,6 +89,8 @@ export class SettingsRoutes extends BaseRouteHandler {
       'CLAUDE_MEM_CONTEXT_OBSERVATIONS',
       'CLAUDE_MEM_WORKER_PORT',
       'CLAUDE_MEM_WORKER_HOST',
+      'CLAUDE_MEM_WORKER_URL',   // Remote worker URL (empty = local mode)
+      'CLAUDE_MEM_API_KEY',      // API key for remote worker auth
       // AI Provider Configuration
       'CLAUDE_MEM_PROVIDER',
       'CLAUDE_MEM_GEMINI_API_KEY',

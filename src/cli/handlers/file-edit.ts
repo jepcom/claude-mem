@@ -6,7 +6,7 @@
  */
 
 import type { EventHandler, NormalizedHookInput, HookResult } from '../types.js';
-import { ensureWorkerRunning, getWorkerPort } from '../../shared/worker-utils.js';
+import { ensureWorkerRunning, getWorkerBaseUrl, getWorkerHeaders } from '../../shared/worker-utils.js';
 import { logger } from '../../utils/logger.js';
 import { HOOK_EXIT_CODES } from '../../shared/hook-constants.js';
 
@@ -25,10 +25,10 @@ export const fileEditHandler: EventHandler = {
       throw new Error('fileEditHandler requires filePath');
     }
 
-    const port = getWorkerPort();
+    const baseUrl = getWorkerBaseUrl();
 
     logger.dataIn('HOOK', `FileEdit: ${filePath}`, {
-      workerPort: port,
+      workerUrl: baseUrl,
       editCount: edits?.length ?? 0
     });
 
@@ -39,9 +39,9 @@ export const fileEditHandler: EventHandler = {
 
     // Send to worker as an observation with file edit metadata
     // The observation handler on the worker will process this appropriately
-    const response = await fetch(`http://127.0.0.1:${port}/api/sessions/observations`, {
+    const response = await fetch(`${baseUrl}/api/sessions/observations`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getWorkerHeaders(),
       body: JSON.stringify({
         contentSessionId: sessionId,
         tool_name: 'write_file',

@@ -18,6 +18,7 @@ import { SessionManager } from '../../SessionManager.js';
 import { SSEBroadcaster } from '../../SSEBroadcaster.js';
 import type { WorkerService } from '../../../worker-service.js';
 import { BaseRouteHandler } from '../BaseRouteHandler.js';
+import { requireApiKey } from '../middleware.js';
 
 export class DataRoutes extends BaseRouteHandler {
   constructor(
@@ -32,34 +33,34 @@ export class DataRoutes extends BaseRouteHandler {
   }
 
   setupRoutes(app: express.Application): void {
-    // Pagination endpoints
-    app.get('/api/observations', this.handleGetObservations.bind(this));
-    app.get('/api/summaries', this.handleGetSummaries.bind(this));
-    app.get('/api/prompts', this.handleGetPrompts.bind(this));
+    // Pagination endpoints - protected by API key when configured (remote mode)
+    app.get('/api/observations', requireApiKey, this.handleGetObservations.bind(this));
+    app.get('/api/summaries', requireApiKey, this.handleGetSummaries.bind(this));
+    app.get('/api/prompts', requireApiKey, this.handleGetPrompts.bind(this));
 
-    // Fetch by ID endpoints
-    app.get('/api/observation/:id', this.handleGetObservationById.bind(this));
-    app.post('/api/observations/batch', this.handleGetObservationsByIds.bind(this));
-    app.get('/api/session/:id', this.handleGetSessionById.bind(this));
-    app.post('/api/sdk-sessions/batch', this.handleGetSdkSessionsByIds.bind(this));
-    app.get('/api/prompt/:id', this.handleGetPromptById.bind(this));
+    // Fetch by ID endpoints - protected
+    app.get('/api/observation/:id', requireApiKey, this.handleGetObservationById.bind(this));
+    app.post('/api/observations/batch', requireApiKey, this.handleGetObservationsByIds.bind(this));
+    app.get('/api/session/:id', requireApiKey, this.handleGetSessionById.bind(this));
+    app.post('/api/sdk-sessions/batch', requireApiKey, this.handleGetSdkSessionsByIds.bind(this));
+    app.get('/api/prompt/:id', requireApiKey, this.handleGetPromptById.bind(this));
 
-    // Metadata endpoints
-    app.get('/api/stats', this.handleGetStats.bind(this));
-    app.get('/api/projects', this.handleGetProjects.bind(this));
+    // Metadata endpoints - protected (contains project info)
+    app.get('/api/stats', requireApiKey, this.handleGetStats.bind(this));
+    app.get('/api/projects', requireApiKey, this.handleGetProjects.bind(this));
 
-    // Processing status endpoints
-    app.get('/api/processing-status', this.handleGetProcessingStatus.bind(this));
-    app.post('/api/processing', this.handleSetProcessing.bind(this));
+    // Processing status endpoints - protected
+    app.get('/api/processing-status', requireApiKey, this.handleGetProcessingStatus.bind(this));
+    app.post('/api/processing', requireApiKey, this.handleSetProcessing.bind(this));
 
-    // Pending queue management endpoints
-    app.get('/api/pending-queue', this.handleGetPendingQueue.bind(this));
-    app.post('/api/pending-queue/process', this.handleProcessPendingQueue.bind(this));
-    app.delete('/api/pending-queue/failed', this.handleClearFailedQueue.bind(this));
-    app.delete('/api/pending-queue/all', this.handleClearAllQueue.bind(this));
+    // Pending queue management endpoints - protected
+    app.get('/api/pending-queue', requireApiKey, this.handleGetPendingQueue.bind(this));
+    app.post('/api/pending-queue/process', requireApiKey, this.handleProcessPendingQueue.bind(this));
+    app.delete('/api/pending-queue/failed', requireApiKey, this.handleClearFailedQueue.bind(this));
+    app.delete('/api/pending-queue/all', requireApiKey, this.handleClearAllQueue.bind(this));
 
-    // Import endpoint
-    app.post('/api/import', this.handleImport.bind(this));
+    // Import endpoint - protected
+    app.post('/api/import', requireApiKey, this.handleImport.bind(this));
   }
 
   /**

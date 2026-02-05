@@ -10,6 +10,8 @@ import cors from 'cors';
 import path from 'path';
 import { getPackageRoot } from '../../../shared/paths.js';
 import { logger } from '../../../utils/logger.js';
+import { SettingsDefaultsManager } from '../../../shared/SettingsDefaultsManager.js';
+import { USER_SETTINGS_PATH } from '../../../shared/paths.js';
 
 /**
  * Create all middleware for the worker service
@@ -64,6 +66,46 @@ export function createMiddleware(
 }
 
 /**
+ * Middleware to require API key authentication
+ * Used for session/data endpoints when running as a remote server
+ * 
+ * Behavior:
+ * - If CLAUDE_MEM_API_KEY is not configured: allow all (local mode)
+ * - If configured: require matching Bearer token in Authorization header
+ */
+export function requireApiKey(req: Request, res: Response, next: NextFunction): void {
+  const settings = SettingsDefaultsManager.loadFromFile(USER_SETTINGS_PATH);
+  const expectedKey = settings.CLAUDE_MEM_API_KEY;
+  
+  // No key configured = local mode, allow all requests
+  if (!expectedKey) {
+    return next();
+  }
+  
+  // Extract Bearer token from Authorization header
+  const authHeader = req.headers.authorization;
+  const providedKey = authHeader?.startsWith('Bearer ')
+    ? authHeader.slice(7)
+    : null;
+  
+  if (providedKey !== expectedKey) {
+    logger.warn('SYSTEM', 'API key authentication failed', {
+      endpoint: req.path,
+      clientIp: req.ip || req.connection.remoteAddress,
+      method: req.method,
+      hasAuthHeader: !!authHeader
+    });
+    res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Invalid or missing API key'
+    });
+    return;
+  }
+  
+  next();
+}
+
+/**
  * Middleware to require localhost-only access
  * Used for admin endpoints that should not be exposed when binding to 0.0.0.0
  */
@@ -76,7 +118,7 @@ export function requireLocalhost(req: Request, res: Response, next: NextFunction
     clientIp === 'localhost';
 
   if (!isLocalhost) {
-    logger.warn('SECURITY', 'Admin endpoint access denied - not localhost', {
+    logger.warn('SYSTEM', 'Admin endpoint access denied - not localhost', {
       endpoint: req.path,
       clientIp,
       method: req.method

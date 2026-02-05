@@ -13,6 +13,8 @@ const HEALTH_CHECK_TIMEOUT_MS = getTimeout(HOOK_TIMEOUTS.HEALTH_CHECK);
 // Cache to avoid repeated settings file reads
 let cachedPort: number | null = null;
 let cachedHost: string | null = null;
+let cachedWorkerUrl: string | null = null;
+let cachedApiKey: string | null = null;
 
 /**
  * Get the worker port number from settings
@@ -53,6 +55,65 @@ export function getWorkerHost(): string {
 export function clearPortCache(): void {
   cachedPort = null;
   cachedHost = null;
+  cachedWorkerUrl = null;
+  cachedApiKey = null;
+}
+
+/**
+ * Get the base URL for the worker API
+ * Uses CLAUDE_MEM_WORKER_URL if set (remote mode), otherwise constructs from host:port (local mode)
+ * Caches the value to avoid repeated file reads
+ */
+export function getWorkerBaseUrl(): string {
+  if (cachedWorkerUrl !== null) {
+    return cachedWorkerUrl;
+  }
+
+  const settingsPath = path.join(SettingsDefaultsManager.get('CLAUDE_MEM_DATA_DIR'), 'settings.json');
+  const settings = SettingsDefaultsManager.loadFromFile(settingsPath);
+  
+  // Remote mode: use explicit URL
+  const remoteUrl = settings.CLAUDE_MEM_WORKER_URL;
+  if (remoteUrl) {
+    cachedWorkerUrl = remoteUrl.replace(/\/$/, '');  // Strip trailing slash
+    return cachedWorkerUrl;
+  }
+  
+  // Local mode: construct from host:port
+  cachedWorkerUrl = `http://${getWorkerHost()}:${getWorkerPort()}`;
+  return cachedWorkerUrl;
+}
+
+/**
+ * Get API key for worker authentication
+ * Returns empty string if not configured (local mode, no auth)
+ */
+export function getWorkerApiKey(): string {
+  if (cachedApiKey !== null) {
+    return cachedApiKey;
+  }
+
+  const settingsPath = path.join(SettingsDefaultsManager.get('CLAUDE_MEM_DATA_DIR'), 'settings.json');
+  const settings = SettingsDefaultsManager.loadFromFile(settingsPath);
+  cachedApiKey = settings.CLAUDE_MEM_API_KEY || '';
+  return cachedApiKey;
+}
+
+/**
+ * Get headers for worker API requests
+ * Includes Authorization header if API key is configured
+ */
+export function getWorkerHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json'
+  };
+  
+  const apiKey = getWorkerApiKey();
+  if (apiKey) {
+    headers['Authorization'] = `Bearer ${apiKey}`;
+  }
+  
+  return headers;
 }
 
 /**
@@ -62,11 +123,14 @@ export function clearPortCache(): void {
  * - /api/health returns 200 as soon as HTTP server is up (sufficient for hook communication)
  * - /api/readiness returns 503 until full initialization completes (too slow for hooks)
  * See: https://github.com/thedotmack/claude-mem/issues/811
+ * 
+ * Supports both local and remote worker modes via getWorkerBaseUrl()
  */
 async function isWorkerHealthy(): Promise<boolean> {
-  const port = getWorkerPort();
+  const baseUrl = getWorkerBaseUrl();
   // Note: Removed AbortSignal.timeout to avoid Windows Bun cleanup issue (libuv assertion)
-  const response = await fetch(`http://127.0.0.1:${port}/api/health`);
+  // Health endpoint doesn't require auth (public endpoint)
+  const response = await fetch(`${baseUrl}/api/health`);
   return response.ok;
 }
 
@@ -81,11 +145,13 @@ function getPluginVersion(): string {
 
 /**
  * Get the running worker's version from the API
+ * Supports both local and remote worker modes via getWorkerBaseUrl()
  */
 async function getWorkerVersion(): Promise<string> {
-  const port = getWorkerPort();
+  const baseUrl = getWorkerBaseUrl();
   // Note: Removed AbortSignal.timeout to avoid Windows Bun cleanup issue (libuv assertion)
-  const response = await fetch(`http://127.0.0.1:${port}/api/version`);
+  // Version endpoint doesn't require auth (public endpoint)
+  const response = await fetch(`${baseUrl}/api/version`);
   if (!response.ok) {
     throw new Error(`Failed to get worker version: ${response.status}`);
   }

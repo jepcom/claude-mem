@@ -9,6 +9,7 @@ import express, { Request, Response } from 'express';
 import { SearchManager } from '../../SearchManager.js';
 import { BaseRouteHandler } from '../BaseRouteHandler.js';
 import { logger } from '../../../../utils/logger.js';
+import { requireApiKey } from '../middleware.js';
 
 export class SearchRoutes extends BaseRouteHandler {
   constructor(
@@ -19,29 +20,30 @@ export class SearchRoutes extends BaseRouteHandler {
 
   setupRoutes(app: express.Application): void {
     // Unified endpoints (new consolidated API)
-    app.get('/api/search', this.handleUnifiedSearch.bind(this));
-    app.get('/api/timeline', this.handleUnifiedTimeline.bind(this));
-    app.get('/api/decisions', this.handleDecisions.bind(this));
-    app.get('/api/changes', this.handleChanges.bind(this));
-    app.get('/api/how-it-works', this.handleHowItWorks.bind(this));
+    // Protected by API key when configured (remote mode)
+    app.get('/api/search', requireApiKey, this.handleUnifiedSearch.bind(this));
+    app.get('/api/timeline', requireApiKey, this.handleUnifiedTimeline.bind(this));
+    app.get('/api/decisions', requireApiKey, this.handleDecisions.bind(this));
+    app.get('/api/changes', requireApiKey, this.handleChanges.bind(this));
+    app.get('/api/how-it-works', requireApiKey, this.handleHowItWorks.bind(this));
 
     // Backward compatibility endpoints
-    app.get('/api/search/observations', this.handleSearchObservations.bind(this));
-    app.get('/api/search/sessions', this.handleSearchSessions.bind(this));
-    app.get('/api/search/prompts', this.handleSearchPrompts.bind(this));
-    app.get('/api/search/by-concept', this.handleSearchByConcept.bind(this));
-    app.get('/api/search/by-file', this.handleSearchByFile.bind(this));
-    app.get('/api/search/by-type', this.handleSearchByType.bind(this));
+    app.get('/api/search/observations', requireApiKey, this.handleSearchObservations.bind(this));
+    app.get('/api/search/sessions', requireApiKey, this.handleSearchSessions.bind(this));
+    app.get('/api/search/prompts', requireApiKey, this.handleSearchPrompts.bind(this));
+    app.get('/api/search/by-concept', requireApiKey, this.handleSearchByConcept.bind(this));
+    app.get('/api/search/by-file', requireApiKey, this.handleSearchByFile.bind(this));
+    app.get('/api/search/by-type', requireApiKey, this.handleSearchByType.bind(this));
 
     // Context endpoints
-    app.get('/api/context/recent', this.handleGetRecentContext.bind(this));
-    app.get('/api/context/timeline', this.handleGetContextTimeline.bind(this));
-    app.get('/api/context/preview', this.handleContextPreview.bind(this));
-    app.get('/api/context/inject', this.handleContextInject.bind(this));
+    app.get('/api/context/recent', requireApiKey, this.handleGetRecentContext.bind(this));
+    app.get('/api/context/timeline', requireApiKey, this.handleGetContextTimeline.bind(this));
+    app.get('/api/context/preview', requireApiKey, this.handleContextPreview.bind(this));
+    app.get('/api/context/inject', requireApiKey, this.handleContextInject.bind(this));
 
     // Timeline and help endpoints
-    app.get('/api/timeline/by-query', this.handleGetTimelineByQuery.bind(this));
-    app.get('/api/search/help', this.handleSearchHelp.bind(this));
+    app.get('/api/timeline/by-query', requireApiKey, this.handleGetTimelineByQuery.bind(this));
+    app.get('/api/search/help', requireApiKey, this.handleSearchHelp.bind(this));
   }
 
   /**
