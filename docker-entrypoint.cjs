@@ -31,12 +31,18 @@ function ensureClaudeAuth() {
   fs.mkdirSync(authDir, { recursive: true });
   
   try {
+    // Handle escaped JSON from Coolify (removes backslash escapes)
+    let cleanJson = authJson;
+    if (authJson.includes('\\"') || authJson.includes('\\{')) {
+      cleanJson = authJson.replace(/\\"/g, '"').replace(/\\{/g, '{').replace(/\\}/g, '}');
+    }
     // Validate it's valid JSON
-    JSON.parse(authJson);
-    fs.writeFileSync(authPath, authJson);
+    JSON.parse(cleanJson);
+    fs.writeFileSync(authPath, cleanJson);
     console.log('[DOCKER] Claude CLI auth configured successfully');
   } catch (e) {
     console.error('[DOCKER] Invalid CLAUDE_AUTH_JSON:', e.message);
+    console.error('[DOCKER] Raw value (first 100 chars):', authJson.substring(0, 100));
   }
 }
 
