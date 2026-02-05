@@ -7,8 +7,14 @@ FROM oven/bun:1.1-alpine
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apk add --no-cache python3
+# Install system dependencies + Node.js for Claude CLI
+RUN apk add --no-cache python3 nodejs npm
+
+# Install Claude CLI globally
+RUN npm install -g @anthropic-ai/claude-code
+
+# Create Claude config directory
+RUN mkdir -p /root/.config/claude-code
 
 # Copy package files
 COPY package.json bun.lockb* ./

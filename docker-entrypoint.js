@@ -9,6 +9,36 @@ const path = require('path');
 // The built worker-service.cjs exports WorkerService class
 const workerPath = './plugin/scripts/worker-service.cjs';
 
+// Write Claude CLI auth from environment variable if provided
+function ensureClaudeAuth() {
+  const authJson = process.env.CLAUDE_AUTH_JSON;
+  if (!authJson) {
+    console.log('[DOCKER] No CLAUDE_AUTH_JSON provided, skipping Claude CLI auth setup');
+    return;
+  }
+  
+  const authDir = '/root/.config/claude-code';
+  const authPath = path.join(authDir, 'auth.json');
+  
+  // Check if auth already exists (from volume)
+  if (fs.existsSync(authPath)) {
+    console.log('[DOCKER] Claude auth.json already exists, skipping');
+    return;
+  }
+  
+  console.log('[DOCKER] Writing Claude CLI auth from CLAUDE_AUTH_JSON env var');
+  fs.mkdirSync(authDir, { recursive: true });
+  
+  try {
+    // Validate it's valid JSON
+    JSON.parse(authJson);
+    fs.writeFileSync(authPath, authJson);
+    console.log('[DOCKER] Claude CLI auth configured successfully');
+  } catch (e) {
+    console.error('[DOCKER] Invalid CLAUDE_AUTH_JSON:', e.message);
+  }
+}
+
 // Ensure settings directory exists and has correct host binding
 function ensureSettings() {
   // Use home dir as that's where SettingsDefaultsManager looks by default
@@ -50,6 +80,9 @@ function ensureSettings() {
 
 async function main() {
   console.log('[DOCKER] Starting claude-mem worker in foreground mode...');
+  
+  // Configure Claude CLI auth if provided
+  ensureClaudeAuth();
   
   // Configure settings before starting worker
   ensureSettings();
