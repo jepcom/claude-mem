@@ -44,7 +44,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD wget -qO- http://127.0.0.1:37777/api/health || exit 1
 
 # Copy entrypoint
-COPY docker-entrypoint.js .
+COPY docker-entrypoint.cjs .
 
 # Start worker in foreground
-CMD ["node", "docker-entrypoint.js"]
+CMD ["node", "docker-entrypoint.cjs"]
