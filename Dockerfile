@@ -46,5 +46,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 # Copy entrypoint
 COPY docker-entrypoint.cjs .
 
-# Start worker in foreground
-CMD ["node", "docker-entrypoint.cjs"]
+# Start worker in foreground (use Bun for bun:sqlite support)
+CMD ["bun", "run", "docker-entrypoint.cjs"]
