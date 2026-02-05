@@ -1,0 +1,58 @@
+# Claude-Mem Server Deployment
+#
+# This docker-compose runs claude-mem with a shared PostgreSQL database,
+# allowing multiple Claude Code instances to share the same memory.
+#
+# Usage:
+#   docker-compose up -d
+#
+# Then configure your Claude Code instances to connect:
+#   ~/.claude-mem/settings.json:
+#   {
+#     "CLAUDE_MEM_STORAGE_ADAPTER": "postgres",
+#     "CLAUDE_MEM_STORAGE_CONNECTION_STRING": "postgres://claude-mem:secret@your-server:5432/claude_mem"
+#   }
+
+services:
+  # PostgreSQL database for shared memory storage
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: claude-mem
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: claude_mem
+    volumes:
+      - claude-mem-db:/var/lib/postgresql/data
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U claude-mem -d claude_mem"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ChromaDB for vector search (semantic memory retrieval)
+  chroma:
+    image: chromadb/chroma:latest
+    restart: unless-stopped
+    volumes:
+      - claude-mem-chroma:/chroma/chroma
+    ports:
+      - "${CHROMA_PORT:-8000}:8000"
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+
+  # Optional: Web viewer UI
+  # The worker serves the UI at http://localhost:37777
+  # For remote access, you may want to put this behind a reverse proxy with auth
+  
+volumes:
+  claude-mem-db:
+  claude-mem-chroma:
+
+# Example .env file:
+# POSTGRES_PASSWORD=your-secure-password
+# POSTGRES_PORT=5432
+# CHROMA_PORT=8000

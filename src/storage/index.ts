@@ -2,9 +2,14 @@
  * Storage module - Pluggable storage backends for claude-mem
  * 
  * Usage:
- *   import { createStorageAdapter, StorageAdapter } from './storage';
+ *   import { createStorageAdapter, createStorageAdapterFromSettings } from './storage';
  *   
+ *   // From explicit config
  *   const storage = createStorageAdapter({ adapter: 'sqlite' });
+ *   
+ *   // From ~/.claude-mem/settings.json
+ *   const storage = createStorageAdapterFromSettings();
+ *   
  *   await storage.initialize();
  */
 
@@ -15,13 +20,15 @@ export { FileStorageAdapter } from './FileStorageAdapter.js';
 import type { StorageAdapter } from './StorageAdapter.js';
 import { SQLiteStorageAdapter } from './SQLiteStorageAdapter.js';
 import { FileStorageAdapter } from './FileStorageAdapter.js';
+import { SettingsDefaultsManager } from '../shared/SettingsDefaultsManager.js';
+import { USER_SETTINGS_PATH } from '../shared/paths.js';
 
 export interface StorageConfig {
-  adapter: 'sqlite' | 'postgres' | 'file';
+  adapter: 'sqlite' | 'postgres' | 'mysql' | 'file' | string;
   options?: {
     // SQLite
     dbPath?: string;
-    // Postgres
+    // Postgres/MySQL
     connectionString?: string;
     // File
     dataDir?: string;
@@ -29,27 +36,68 @@ export interface StorageConfig {
 }
 
 /**
- * Create a storage adapter based on configuration
+ * Create a storage adapter based on explicit configuration
  */
 export function createStorageAdapter(config: StorageConfig): StorageAdapter {
   switch (config.adapter) {
     case 'sqlite':
       return new SQLiteStorageAdapter(config.options?.dbPath);
     
-    case 'postgres':
-      // TODO: Implement PostgresStorageAdapter
-      throw new Error('PostgreSQL storage adapter not yet implemented');
-    
     case 'file':
       return new FileStorageAdapter(config.options?.dataDir);
     
+    case 'postgres':
+    case 'postgresql':
+      // TODO: Community contribution welcome
+      throw new Error(
+        'PostgreSQL storage adapter not yet implemented.\n' +
+        'Implement StorageAdapter interface and submit a PR!\n' +
+        'See: src/storage/StorageAdapter.ts'
+      );
+    
+    case 'mysql':
+      // TODO: Community contribution welcome
+      throw new Error(
+        'MySQL storage adapter not yet implemented.\n' +
+        'Implement StorageAdapter interface and submit a PR!\n' +
+        'See: src/storage/StorageAdapter.ts'
+      );
+    
     default:
-      throw new Error(`Unknown storage adapter: ${config.adapter}`);
+      throw new Error(
+        `Unknown storage adapter: ${config.adapter}\n` +
+        'Available adapters: sqlite, file\n' +
+        'To add a new adapter, implement StorageAdapter interface.'
+      );
   }
 }
 
 /**
- * Default storage adapter (SQLite)
+ * Create a storage adapter from ~/.claude-mem/settings.json
+ * 
+ * Settings:
+ *   CLAUDE_MEM_STORAGE_ADAPTER: 'sqlite' | 'file' | 'postgres' | ...
+ *   CLAUDE_MEM_STORAGE_CONNECTION_STRING: database connection URL
+ *   CLAUDE_MEM_STORAGE_DATA_DIR: directory for file-based storage
+ */
+export function createStorageAdapterFromSettings(): StorageAdapter {
+  const settings = SettingsDefaultsManager.loadFromFile(USER_SETTINGS_PATH);
+  
+  const adapter = settings.CLAUDE_MEM_STORAGE_ADAPTER || 'sqlite';
+  const connectionString = settings.CLAUDE_MEM_STORAGE_CONNECTION_STRING || undefined;
+  const dataDir = settings.CLAUDE_MEM_STORAGE_DATA_DIR || undefined;
+  
+  return createStorageAdapter({
+    adapter,
+    options: {
+      connectionString,
+      dataDir,
+    },
+  });
+}
+
+/**
+ * Default storage adapter (SQLite, for backwards compatibility)
  */
 export function createDefaultStorageAdapter(): StorageAdapter {
   return new SQLiteStorageAdapter();

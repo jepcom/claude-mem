@@ -1,13 +1,94 @@
-# Adapter Architecture Proposal
+# Storage Adapters
 
 ## Overview
 
-This document proposes adding adapter patterns to claude-mem in three key areas:
-1. **Storage Adapters** - Pluggable persistence backends
-2. **Memory Format Adapters** - Different memory representation formats  
-3. **Platform Hook Adapters** - Integration with non-Claude-Code platforms
+Claude-mem supports pluggable storage backends via the **StorageAdapter** interface.
+This enables:
+- **Shared memory** across multiple machines (PostgreSQL, MySQL)
+- **Simple deployments** with zero dependencies (file-based JSON)
+- **Cloud-native setups** (Supabase, PlanetScale, etc.)
+- **Custom backends** for specific needs
 
-## Current Architecture
+## Quick Start
+
+### Local (Default)
+No configuration needed. Uses SQLite in `~/.claude-mem/`.
+
+### File-Based Storage
+```json
+// ~/.claude-mem/settings.json
+{
+  "CLAUDE_MEM_STORAGE_ADAPTER": "file",
+  "CLAUDE_MEM_STORAGE_DATA_DIR": "~/my-claude-memory"
+}
+```
+
+### Shared PostgreSQL Server
+```json
+// ~/.claude-mem/settings.json
+{
+  "CLAUDE_MEM_STORAGE_ADAPTER": "postgres",
+  "CLAUDE_MEM_STORAGE_CONNECTION_STRING": "postgres://user:pass@your-server:5432/claude_mem"
+}
+```
+
+### Docker Compose (Self-Hosted Server)
+```bash
+# Clone and start
+git clone https://github.com/thedotmack/claude-mem
+cd claude-mem
+docker-compose up -d
+
+# Configure clients to connect
+# See docker-compose.yml for details
+```
+
+## Available Adapters
+
+| Adapter | Status | Use Case |
+|---------|--------|----------|
+| `sqlite` | ✅ Default | Local single-user |
+| `file` | ✅ Ready | Zero dependencies, git-trackable |
+| `postgres` | 🚧 TODO | Shared multi-user, production |
+| `mysql` | 🚧 TODO | Shared multi-user |
+
+## Implementing Your Own Adapter
+
+Implement the `StorageAdapter` interface from `src/storage/StorageAdapter.ts`:
+
+```typescript
+import type { StorageAdapter } from 'claude-mem/storage';
+
+export class MyStorageAdapter implements StorageAdapter {
+  readonly name = 'my-adapter';
+  
+  async initialize(): Promise<void> { /* ... */ }
+  async close(): Promise<void> { /* ... */ }
+  
+  // Sessions
+  async createSession(...): Promise<number> { /* ... */ }
+  async getSessionById(...): Promise<Session | null> { /* ... */ }
+  // ... etc
+}
+```
+
+See `src/storage/FileStorageAdapter.ts` for a complete reference implementation.
+
+---
+
+## Future: Additional Adapter Types
+
+### Memory Format Adapters
+Different memory representation formats  
+
+### Platform Hook Adapters
+Integration with non-Claude-Code platforms (Clawdbot, etc.)
+
+---
+
+## Architecture
+
+### Current Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐

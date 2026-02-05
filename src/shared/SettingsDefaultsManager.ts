@@ -18,6 +18,10 @@ export interface SettingsDefaults {
   CLAUDE_MEM_WORKER_PORT: string;
   CLAUDE_MEM_WORKER_HOST: string;
   CLAUDE_MEM_SKIP_TOOLS: string;
+  // Storage Adapter Configuration
+  CLAUDE_MEM_STORAGE_ADAPTER: string;  // 'sqlite' | 'file' | 'postgres' | 'mysql' | etc.
+  CLAUDE_MEM_STORAGE_CONNECTION_STRING: string;  // DB connection string (for postgres/mysql)
+  CLAUDE_MEM_STORAGE_DATA_DIR: string;  // Data directory (for file adapter)
   // AI Provider Configuration
   CLAUDE_MEM_PROVIDER: string;  // 'claude' | 'gemini' | 'openrouter'
   CLAUDE_MEM_CLAUDE_AUTH_METHOD: string;  // 'cli' | 'api' - how Claude provider authenticates
@@ -63,6 +67,10 @@ export class SettingsDefaultsManager {
     CLAUDE_MEM_WORKER_PORT: '37777',
     CLAUDE_MEM_WORKER_HOST: '127.0.0.1',
     CLAUDE_MEM_SKIP_TOOLS: 'ListMcpResourcesTool,SlashCommand,Skill,TodoWrite,AskUserQuestion',
+    // Storage Adapter Configuration
+    CLAUDE_MEM_STORAGE_ADAPTER: 'sqlite',  // Default to SQLite for backwards compatibility
+    CLAUDE_MEM_STORAGE_CONNECTION_STRING: '',  // Empty = use default local storage
+    CLAUDE_MEM_STORAGE_DATA_DIR: '',  // Empty = use CLAUDE_MEM_DATA_DIR
     // AI Provider Configuration
     CLAUDE_MEM_PROVIDER: 'claude',  // Default to Claude
     CLAUDE_MEM_CLAUDE_AUTH_METHOD: 'cli',  // Default to CLI subscription billing (not API key)
