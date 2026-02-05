@@ -400,8 +400,10 @@ export class SessionRoutes extends BaseRouteHandler {
    * Queue observations by contentSessionId (post-tool-use-hook uses this)
    * POST /api/sessions/observations
    * Body: { contentSessionId, tool_name, tool_input, tool_response, cwd }
+   * 
+   * NOTE: This handler uses adapter-agnostic methods for multi-backend support.
    */
-  private handleObservationsByClaudeId = this.wrapHandler((req: Request, res: Response): void => {
+  private handleObservationsByClaudeId = this.wrapHandler(async (req: Request, res: Response): Promise<void> => {
     const { contentSessionId, tool_name, tool_input, tool_response, cwd } = req.body;
 
     if (!contentSessionId) {
@@ -433,22 +435,19 @@ export class SessionRoutes extends BaseRouteHandler {
       }
     }
 
-    const store = this.dbManager.getSessionStore();
-
-    // Get or create session
-    const sessionDbId = store.createSDKSession(contentSessionId, '', '');
-    const promptNumber = store.getPromptNumberFromUserPrompts(contentSessionId);
+    // Get or create session (works with any adapter)
+    const sessionDbId = await this.dbManager.createOrGetSession(contentSessionId, '', '');
+    const promptNumber = await this.dbManager.getPromptNumber(contentSessionId);
 
     // Privacy check: skip if user prompt was entirely private
-    const userPrompt = PrivacyCheckValidator.checkUserPromptPrivacy(
-      store,
-      contentSessionId,
-      promptNumber,
-      'observation',
-      sessionDbId,
-      { tool_name }
-    );
-    if (!userPrompt) {
+    // For non-SQLite adapters, we need to fetch the prompt differently
+    const userPromptText = await this.dbManager.getUserPromptText(contentSessionId, promptNumber);
+    if (!userPromptText) {
+      logger.debug('SESSION', 'Skipping observation - no user prompt found (private or missing)', {
+        sessionId: sessionDbId,
+        promptNumber,
+        tool_name
+      });
       res.json({ status: 'skipped', reason: 'private' });
       return;
     }
@@ -492,29 +491,27 @@ export class SessionRoutes extends BaseRouteHandler {
    * Body: { contentSessionId, last_assistant_message }
    *
    * Checks privacy, queues summarize request for SDK agent
+   * 
+   * NOTE: This handler uses adapter-agnostic methods for multi-backend support.
    */
-  private handleSummarizeByClaudeId = this.wrapHandler((req: Request, res: Response): void => {
+  private handleSummarizeByClaudeId = this.wrapHandler(async (req: Request, res: Response): Promise<void> => {
     const { contentSessionId, last_assistant_message } = req.body;
 
     if (!contentSessionId) {
       return this.badRequest(res, 'Missing contentSessionId');
     }
 
-    const store = this.dbManager.getSessionStore();
-
-    // Get or create session
-    const sessionDbId = store.createSDKSession(contentSessionId, '', '');
-    const promptNumber = store.getPromptNumberFromUserPrompts(contentSessionId);
+    // Get or create session (works with any adapter)
+    const sessionDbId = await this.dbManager.createOrGetSession(contentSessionId, '', '');
+    const promptNumber = await this.dbManager.getPromptNumber(contentSessionId);
 
     // Privacy check: skip if user prompt was entirely private
-    const userPrompt = PrivacyCheckValidator.checkUserPromptPrivacy(
-      store,
-      contentSessionId,
-      promptNumber,
-      'summarize',
-      sessionDbId
-    );
-    if (!userPrompt) {
+    const userPromptText = await this.dbManager.getUserPromptText(contentSessionId, promptNumber);
+    if (!userPromptText) {
+      logger.debug('SESSION', 'Skipping summarize - no user prompt found (private or missing)', {
+        sessionId: sessionDbId,
+        promptNumber
+      });
       res.json({ status: 'skipped', reason: 'private' });
       return;
     }
@@ -542,8 +539,10 @@ export class SessionRoutes extends BaseRouteHandler {
    * - Saves user prompt (with privacy tag stripping)
    *
    * Returns: { sessionDbId, promptNumber, skipped: boolean, reason?: string }
+   * 
+   * NOTE: This handler uses adapter-agnostic methods for multi-backend support.
    */
-  private handleSessionInitByClaudeId = this.wrapHandler((req: Request, res: Response): void => {
+  private handleSessionInitByClaudeId = this.wrapHandler(async (req: Request, res: Response): Promise<void> => {
     const { contentSessionId, project, prompt } = req.body;
 
     logger.info('HTTP', 'SessionRoutes: handleSessionInitByClaudeId called', {
@@ -557,24 +556,22 @@ export class SessionRoutes extends BaseRouteHandler {
       return;
     }
 
-    const store = this.dbManager.getSessionStore();
-
-    // Step 1: Create/get SDK session (idempotent INSERT OR IGNORE)
-    const sessionDbId = store.createSDKSession(contentSessionId, project, prompt);
+    // Step 1: Create/get SDK session (idempotent, works with any adapter)
+    const sessionDbId = await this.dbManager.createOrGetSession(contentSessionId, project, prompt);
 
     // Verify session creation with DB lookup
-    const dbSession = store.getSessionById(sessionDbId);
-    const isNewSession = !dbSession?.memory_session_id;
+    const dbSession = await this.dbManager.getStorageAdapter().getSessionById(sessionDbId);
+    const isNewSession = !dbSession?.memorySessionId;
     logger.info('SESSION', `CREATED | contentSessionId=${contentSessionId} → sessionDbId=${sessionDbId} | isNew=${isNewSession} | project=${project}`, {
       sessionId: sessionDbId
     });
 
     // Step 2: Get next prompt number from user_prompts count
-    const currentCount = store.getPromptNumberFromUserPrompts(contentSessionId);
+    const currentCount = await this.dbManager.getPromptNumber(contentSessionId);
     const promptNumber = currentCount + 1;
 
     // Debug-level alignment logs for detailed tracing
-    const memorySessionId = dbSession?.memory_session_id || null;
+    const memorySessionId = dbSession?.memorySessionId || null;
     if (promptNumber > 1) {
       logger.debug('HTTP', `[ALIGNMENT] DB Lookup Proof | contentSessionId=${contentSessionId} → memorySessionId=${memorySessionId || '(not yet captured)'} | prompt#=${promptNumber}`);
     } else {
@@ -601,8 +598,8 @@ export class SessionRoutes extends BaseRouteHandler {
       return;
     }
 
-    // Step 5: Save cleaned user prompt
-    store.saveUserPrompt(contentSessionId, promptNumber, cleanedPrompt);
+    // Step 5: Save cleaned user prompt (works with any adapter)
+    await this.dbManager.getStorageAdapter().saveUserPrompt(contentSessionId, promptNumber, cleanedPrompt);
 
     // Debug-level log since CREATED already logged the key info
     logger.debug('SESSION', 'User prompt saved', {
