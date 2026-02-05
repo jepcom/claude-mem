@@ -1,23 +1,52 @@
 # Claude-Mem Server Deployment
 #
-# This docker-compose runs claude-mem with a shared PostgreSQL database,
-# allowing multiple Claude Code instances to share the same memory.
+# Option B: Centralized Worker
+# Runs claude-mem worker on a server with SQLite storage.
+# Multiple clients (laptops, Clawdbot) POST hooks to it via HTTP.
 #
 # Usage:
 #   docker-compose up -d
 #
-# Then configure your Claude Code instances to connect:
-#   ~/.claude-mem/settings.json:
+# Then configure clients (~/.claude-mem/settings.json):
 #   {
-#     "CLAUDE_MEM_STORAGE_ADAPTER": "postgres",
-#     "CLAUDE_MEM_STORAGE_CONNECTION_STRING": "postgres://claude-mem:secret@your-server:5432/claude_mem"
+#     "CLAUDE_MEM_WORKER_URL": "http://your-server:37777",
+#     "CLAUDE_MEM_API_KEY": "your-api-key"
+#   }
+#
+# For testing locally:
+#   docker-compose up -d worker
+#   # Client settings:
+#   {
+#     "CLAUDE_MEM_WORKER_URL": "http://localhost:37777",
+#     "CLAUDE_MEM_API_KEY": "test-key-123"
 #   }
 
 services:
-  # PostgreSQL database for shared memory storage
+  # Claude-mem worker (centralized service)
+  worker:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${WORKER_PORT:-37777}:37777"
+    volumes:
+      - claude-mem-data:/data/.claude-mem
+    environment:
+      - CLAUDE_MEM_WORKER_HOST=0.0.0.0
+      - CLAUDE_MEM_WORKER_PORT=37777
+      - CLAUDE_MEM_API_KEY=${CLAUDE_MEM_API_KEY:-}
+      - CLAUDE_MEM_LOG_LEVEL=${LOG_LEVEL:-INFO}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:37777/api/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+  # PostgreSQL database (optional - for Option A shared storage)
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    profiles: ["postgres"]  # Only start with: docker-compose --profile postgres up
     environment:
       POSTGRES_USER: claude-mem
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
@@ -32,10 +61,11 @@ services:
       timeout: 5s
       retries: 5
 
-  # ChromaDB for vector search (semantic memory retrieval)
+  # ChromaDB for vector search (optional)
   chroma:
     image: chromadb/chroma:latest
     restart: unless-stopped
+    profiles: ["chroma"]  # Only start with: docker-compose --profile chroma up
     volumes:
       - claude-mem-chroma:/chroma/chroma
     ports:
@@ -44,15 +74,13 @@ services:
       - IS_PERSISTENT=TRUE
       - ANONYMIZED_TELEMETRY=FALSE
 
-  # Optional: Web viewer UI
-  # The worker serves the UI at http://localhost:37777
-  # For remote access, you may want to put this behind a reverse proxy with auth
-  
 volumes:
+  claude-mem-data:
   claude-mem-db:
   claude-mem-chroma:
 
 # Example .env file:
-# POSTGRES_PASSWORD=your-secure-password
-# POSTGRES_PORT=5432
-# CHROMA_PORT=8000
+# CLAUDE_MEM_API_KEY=sk-your-secure-random-key
+# WORKER_PORT=37777
+# LOG_LEVEL=DEBUG
+# POSTGRES_PASSWORD=your-secure-password (if using postgres profile)

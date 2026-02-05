@@ -67,9 +67,9 @@ describe('StorageAdapter', () => {
           concepts: ['testing', 'storage'],
           filesRead: ['file1.ts'],
           filesModified: ['file2.ts'],
-        },
-        1,
-        100
+          promptNumber: 1,
+          discoveryTokens: 100,
+        }
       );
 
       expect(result.id).toBe(1);
@@ -146,6 +146,8 @@ describe('StorageAdapter', () => {
             concepts: [],
             filesRead: [],
             filesModified: [],
+            promptNumber: null,
+            discoveryTokens: 0,
           },
           {
             type: 'bugfix',
@@ -157,6 +159,8 @@ describe('StorageAdapter', () => {
             concepts: [],
             filesRead: [],
             filesModified: [],
+            promptNumber: null,
+            discoveryTokens: 0,
           },
         ],
         {
